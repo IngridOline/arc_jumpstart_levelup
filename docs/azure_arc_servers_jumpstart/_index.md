@@ -345,7 +345,7 @@ If you already have [Microsoft Defender for Cloud](https://docs.microsoft.com/az
 
 #### Task 1: Examine the existing Arc-connected machines
 
-- The deployment process that you have walked through should have set up four VMs running on Hyper-V in the ArcBox-Client machine. Two of these machines have been connected to Azure Arc already. Let us have a look at these in the Azure Portal
+- You should have four VMs running on Hyper-V in the ArcBox-Client machine. Two of these machines have been connected to Azure Arc already. Let us have a look at these in the Azure Portal
 
 - Enter "Machines - Azure Arc" in the top search bar in the Azure portal and select it from the displayed services.
 
@@ -353,7 +353,7 @@ If you already have [Microsoft Defender for Cloud](https://docs.microsoft.com/az
 
 - We should see the machines that are connected to Arc already: Arcbox-Ubuntu-01 and ArcBox-Win2K19.
 
-    ![Screenshot showing existing Arc connected servers](./First_view_of%20Arc_connected.png)
+    ![Screenshot showing existing Arc connected servers](./two-servers.png)
 
 - We want to connect the other 2 machines running as VMs in the ArcBox-Client. We can see these (ArcBox-Win2K22 and ArcBox-Ubuntu-02) by running the Hyper-V Manager in the ArcBox-Client (after we have connected to it with RDP as explained earlier in the setup).
 
@@ -390,7 +390,7 @@ If you already have [Microsoft Defender for Cloud](https://docs.microsoft.com/az
 
 - On successful completion a message is displayed to confirm the machine is connected to Azure Arc. We can also verify that our Windows machine is connected in the Azure portal (Machines - Azure Arc).
 
-    ![Screenshot confirm win machine on-boarded](./confirm_windows_machine_onboarding.png)
+    ![Screenshot confirm win machine on-boarded](./thre-servers.png)
 
 #### Task 3: Onboard a Linux machine to Azure Arc
 
@@ -580,7 +580,7 @@ As part of the ArcBox automation, some alerts and workbooks have been created to
 
     ![Screenshot showing opening the alerts page](./alerts_rules_open.png)
 
-- Explore the alert rules crated for you.
+- Explore the alert rules created for you.
 
     ![Screenshot showing opening one alert around processor time](./alerts_rules_rules.png)
 
@@ -1871,6 +1871,13 @@ Then run the query in PowerShell
   | extend logicalCores = tostring(properties.detectedProperties.logicalCoreCount)
   | summarize serversCount = count() by logicalCores"
   ```
+  If run in the portal: 
+    ```KQL
+  Resources
+  | where type =~ 'Microsoft.HybridCompute/machines'
+  | extend logicalCores = tostring(properties.detectedProperties.logicalCoreCount)
+  | summarize serversCount = count() by logicalCores
+  ```
 
 - The Graph Explorer allows you to get a graphical view of your results by selecting the "charts" option.
 
@@ -1885,6 +1892,13 @@ Then run the query in PowerShell
   | where type =~ 'Microsoft.HybridCompute/machines' and isnotempty(tags['Scenario'])
   | extend Scenario = tags['Scenario']
   | project name, tags"
+  ```
+  If run in the portal: 
+  ```KQL
+  Resources
+  | where type =~ 'Microsoft.HybridCompute/machines' and isnotempty(tags['Scenario'])
+  | extend Scenario = tags['Scenario']
+  | project name, tags
   ```
 
 #### Task 6: List the extensions installed on the Azure Arc-enabled servers.
@@ -1903,6 +1917,19 @@ Then run the query in PowerShell
   | summarize Extensions = make_list(ExtensionName) by id, ComputerName, OSName
   | order by tolower(OSName) desc"
   ```
+  If run in the portal: 
+  ```KQL
+  Resources
+  | where type == 'microsoft.hybridcompute/machines'
+  | project id, JoinID = toupper(id), ComputerName = tostring(properties.osProfile.computerName), OSName = tostring(properties.osName)
+  | join kind=leftouter(
+      Resources
+      | where type == 'microsoft.hybridcompute/machines/extensions'
+      | project MachineId = toupper(substring(id, 0, indexof(id, '/extensions'))), ExtensionName = name
+  ) on $left.JoinID == $right.MachineId
+  | summarize Extensions = make_list(ExtensionName) by id, ComputerName, OSName
+  | order by tolower(OSName) desc
+  ```
 
 - If you have used the portal to run the query then you should see something like the following
 
@@ -1918,6 +1945,14 @@ Then run the query in PowerShell
   | extend arcAgentVersion = tostring(properties.['agentVersion']), osName = tostring(properties.['osName']), osVersion = tostring(properties.['osVersion']), osSku = tostring(properties.['osSku']),
   lastStatusChange = tostring(properties.['lastStatusChange'])
   | project name, arcAgentVersion, osName, osVersion, osSku, lastStatusChange"
+  ```
+  If run in the portal: 
+  ```KQL
+  Resources
+  | where type =~ 'Microsoft.HybridCompute/machines'
+  | extend arcAgentVersion = tostring(properties.['agentVersion']), osName = tostring(properties.['osName']), osVersion = tostring(properties.['osVersion']), osSku = tostring(properties.['osSku']),
+  lastStatusChange = tostring(properties.['lastStatusChange'])
+  | project name, arcAgentVersion, osName, osVersion, osSku, lastStatusChange
   ```
 
 - Running the same query in the portal should result in something like the following
